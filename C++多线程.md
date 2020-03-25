@@ -1,6 +1,7 @@
 ## 目录
 
 - [多线程基础](#多线程基础)
+  - [查看本地CPU核心数和线程数](#查看本地CPU核心数和线程数)
   - [不同平台下的线程](#不同平台下的线程)
   - [多线程容易造成数据混乱](#多线程容易造成数据混乱)
 - [线程同步思想](#线程同步思想)
@@ -25,6 +26,8 @@
   - [C-线程属性](#C-线程属性)
 - [在C++中的多线程](#在C++中的多线程)
   - [C++中的创建线程和头文件](#C++中的创建线程和头文件)
+  - [C++中的互斥锁](#C++中的互斥锁)
+  - [C++中的原子操作-原子锁](#C++中的原子操作-原子锁)
   - 
 
 
@@ -108,6 +111,19 @@
 - 多线程传参数时,绝对不要使用栈区的内容,一定要使用堆上的内容,因为每个线程的栈区地址不相同.每个线程都是独有的栈区.
 - 父线程要回收没有分离的子线程的pcb.
 ```
+
+
+
+
+
+### 查看本地CPU核心数和线程数
+
+- **Macos: `sysctl -n machdep.cpu.core_count machdep.cpu.thread_count      #显示核心数和线程数`**
+- **Linux: `lscpu`**
+
+
+
+
 
 
 
@@ -941,7 +957,8 @@ int ptherad_detach(pthread_t pthread);
         - ==**但是, 没有执行 `.detach() 或 .join()` 的 存在于堆或栈上的线程对象, 是不能够执行`delete`的, 必须全部调用, **==
     - **`t.join();` 会启动一个或多个线程,并等待该线程执行结束之后,继续执行主线程**
       - **多个线程指的是数组, 里面都是线程对象, 当数组中的某个对象调用 `.join()` 时, 数组内的所有对象全部都会启动, 也就是某个时间点一起并行执行.**
-    - 
+- **使用`std::thread t(函数指针);` 来创建线程,但不调用 `.detach() 和 join()` 的任何一个,那么线程会直接启动, 但是父进程结束前会收到一个信号 `SIGABRT` . 这个是没有调用`.detach() 和 join()` 引发的.**
+  - **如果使用 `std::thread t(函数指针);` 创建线程,并且调用了  `.detach() 或 join()` .那么线程会在`.detach() 或 join()` 调用处启动, 不会在创建函数之后就直接运行子线程.**
 
 ```c++
 #include <iostream>
@@ -950,6 +967,12 @@ int ptherad_detach(pthread_t pthread);
 void 
 cmdThread(int a, char b){
   std::cout << "第二线程" << std::endl;
+}
+int
+main2(void){
+ std::thread t1(cmdThread, 1, 'c');  //如果只是这么写, 不设置.join和.detach,那么线程会直接启动
+ std::thread* t2 = new std::thread(cmdThread, 1, 'c');  // 和上面一样.
+  // 如果这么写, 那么在主线程结束前,会出现一个信号 SIGABRT,这个信号给 t1和t2调用 detach即可解决.
 }
 
 int 
@@ -976,26 +999,66 @@ main(void){
   t4[1]->detach();
   t4[2]->detach();
   t4[3]->detach();   //虽然这里调用了, 但是什么都不会发生. 如果不这么做, 会无法删除没有调用.detach()
-                     // 的对象, 哪怕对象存在于栈空间也一样, 否则 主线程绝对报错.
-  
-  
-  
-  
-  
+                     // 的对象, 哪怕对象存在于栈空间也一样, 否则 主线程绝对报错. 
 }
 ```
 
 
 
+## C++中的互斥锁
 
+> **需要头文件 `<mutex>`**
 
+- 需要一个变量(应该是全局的)  `mutex m;` , 互斥锁(`每个资源一把锁,所有线程共享同一把锁`).
+  - `m.lock();`  上锁. 应该给临界区上锁.但不应该加在循环上.
+  - `m.unlock();` 解锁.
+  - **自解锁和自上锁`(可以解决异常)`**:
+    - **`lock_guard<mutex> lg(m);`, 找个对象就是一个对 mutex的封装. 构造是 `m.lock();` ,析构是 `m.unlock();`**
+    - ==该类型存在于作用域之中,让他自动析构来达到解锁的目的,可以避免一些异常而导致无法解锁的发生==
 
+ 
 
+## C++中的原子操作-原子锁
 
+> **需要头文件 `<atomic>`**
 
+- **适用于多线程, 效率非常可观,比 `mutex`要好**
+- C++提供了一个原子操作的类型. `atomic<类型> Name;` 
+  - 可以将需要共享以及加锁的元素声明为该模版类型.
+- **这个原子操作,内部的实现也是锁. 当普通的锁来用即可.**
 
+```C++
+#include <mutex>
+#include <atomic>
+class test{
+    // 空的
+};
 
+atomic<test>  tTest; // 可以放入对象.
+atomic_int sum(0);   // typdef定义的, 原型是, atomic<int> sum(0);
+const int tCount = 4; //线程的数量.
 
+void workFun(int index){
+	for( int i =0; i< 1000; i++)
+	  sum++;
+}
+
+int main(int argc, const char * argv[]) {    
+  thread* t[tCount] = {};
+  for (int i =0; i< tCount; i++){
+    t[i] =  new thread(workFun, i);  
+  }
+  for (int i =0; i< tCount; i++){
+    t[i]->detach();
+  }
+  
+  for (int i =0; i< tCount; i++){
+    delete t[i];  
+  }
+}
+
+/* 结论: 线程数4, 每个循环执行 1000次 sum++,  程序结束后 sum = 4000; ,没有任何明面加锁操作. */
+```
 
 
 

@@ -10,6 +10,31 @@
 
 
 
+
+
+- `std::mem_fn(&CellServer::OnRun)` 将成员函数指针,转换成普通函数指针.
+  - `CellServer::OnRun`是一个类的成员函数.
+- **C++中的休眠函数**`<chrorn>`
+  - ` std::chrono::milliseconds t(1); // 声明一个休眠的时间, 毫秒单位`
+  - `std::this_thread::sleep_for(t);  // 启动一个休眠, c++ 提供的, 休眠一毫秒`
+
+- 
+
+
+
+
+
+- MAC 下的查看端口命令. Linux也差不多.
+
+> **netstat -anvp udp           #查看UDP端口占用和PID 等信息**
+> **netstat -ap TCP             #精简型, 但是查看的是 TCP**
+>
+> **netstat -anvf inet         #UDP和TCP 的信息都会输出.**
+
+
+
+
+
 ## windows下vs2019配置
 
 > **新建解决方案中的项目:**
