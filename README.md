@@ -17,8 +17,11 @@
 - **C++中的休眠函数**`<chrorn>`
   - ` std::chrono::milliseconds t(1); // 声明一个休眠的时间, 毫秒单位`
   - `std::this_thread::sleep_for(t);  // 启动一个休眠, c++ 提供的, 休眠一毫秒`
-
-- 
+- **编译命令**([完整解释](链接.md))
+  - `g++ main.cpp -I../include -o c.out -pthread`
+    - `-I 是头文件 , -pthread 是加载线程`
+    - `-i (小写的L)链接`某个静态库
+    - `-shared  -fpic  生成位置无关的动态库.so文件`
 
 
 
