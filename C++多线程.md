@@ -24,11 +24,11 @@
   - [C-回收子线程资源阻塞等待线程退出,获取线程退出状态  pthread_join](#C-回收子线程资源阻塞等待线程退出,获取线程退出状态pthread_join)
   - [C-设置线程分离 ptherad_detach](#C-设置线程分离ptherad_detach)
   - [C-线程属性](#C-线程属性)
-- [在C++中的多线程](#在C++中的多线程)
+- [在C++中的多线程](#在C++的多线程)
   - [C++中的创建线程和头文件](#C++中的创建线程和头文件)
   - [C++中的互斥锁](#C++中的互斥锁)
   - [C++中的原子操作-原子锁](#C++中的原子操作-原子锁)
-  - 
+  - [C++中的自解锁](#C++中的自解锁)
 
 
 
@@ -936,7 +936,7 @@ int ptherad_detach(pthread_t pthread);
 
 
 
-## 在C++中的多线程
+## 在C++的多线程
 
 > **线程头文件 `<thread>`**
 
@@ -1062,7 +1062,110 @@ int main(int argc, const char * argv[]) {
 
 
 
+## C++中的自解锁
 
+> `<mutex>`
+
+- **自解锁需要配合互斥锁使用.也就是说, 需要一个全局或线程全局的一个互斥锁对象.**
+- **自解锁就是创建一个对象, 在这个对象的生命周期内,所有的操作都是单线程执行,也就是上锁.**
+  - **生命周期结束后,会自动解锁, 这个锁可以避免因为异常导致的死锁问题.**
+- `std::lock_guard<std::mutex> lock(_mutex);  //自解锁`
+
+```c++
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <chrono>  //C++提供的计时器,微秒级
+
+std::mutex _mutex;         // 互斥锁,给 自解锁使用, 需要所有需要上锁的线程可以访问,并且保证唯一性
+long  t = 0;
+long  e = 0;
+
+class TimeStamp{
+public:
+    TimeStamp(){
+        updateTime();  // 初始化和更新时间是相同的
+    }
+    ~TimeStamp(){}
+    
+    /* 更新当前时间点 */
+    void updateTime(){
+        _begin = std::chrono::high_resolution_clock::now();  //得到当前时间,相当于初始化.
+    }
+    
+    //获得当前时间差的 秒
+    double getElapsedSecond(void){
+        // 将返回的微秒  扩展到 秒
+        return  getElapsedTimeInMicroSec() * 0.000001;
+    }
+    
+    //获得当前时间差的 毫秒
+    double getElapsedTimeInMilliSec(void){
+        // 将返回的微秒  扩展到 毫秒
+        return this->getElapsedTimeInMicroSec() * 0.001;
+    }
+    
+    
+    /* 获得已经过去的时间, 微秒级 */
+    double getElapsedTimeInMicroSec(void){
+        return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - _begin).count();
+    }
+    
+private:
+    std::chrono::time_point<std::chrono::high_resolution_clock> _begin;  //时间点<高分辨率时钟>
+};
+
+
+;
+// 声明一个休眠的时间, 毫秒单位
+std::chrono::milliseconds t_milli(1);
+
+void test(void){
+    while(1){
+        {
+            std::lock_guard<std::mutex> lock(_mutex);    //自解锁
+            //std::cout << "自解锁" << std::endl;
+            
+            // 启动一个休眠, c++ 提供的, 休眠 毫秒
+       //     std::this_thread::sleep_for(t_milli);
+            
+            e++;   // 这个值就没问题,有序增加
+        }
+        // 这里自解锁的生命周期结束了, 也就是解锁了. t 会无须并错乱的增加
+        t++;
+    }
+}
+
+int main(void){
+    int  threadNum = 4;
+    for( ;0  < threadNum ; threadNum--){
+        std::thread p(test);  //创建4个线程
+        p.detach();    //线程分离
+        
+    }
+    
+    double  nowTime;
+    // 声明一个休眠的时间, 毫秒单位
+    std::chrono::milliseconds tMain(10);
+    
+    
+    TimeStamp timeMain;
+    timeMain.updateTime();
+    
+    
+    while(1){
+        // 启动一个休眠, c++ 提供的, 休眠 毫秒
+        std::this_thread::sleep_for(tMain);
+        nowTime = timeMain.getElapsedSecond();
+        if ( 1.0 <= nowTime){
+            std::cout << "t = " << t << ". e = " << e << std::endl;
+            timeMain.updateTime();
+        }
+        
+    }   
+    return 0;
+}
+```
 
 
 

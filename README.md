@@ -13,12 +13,26 @@
 
 
 - `std::mem_fn(&CellServer::OnRun)` 将成员函数指针,转换成普通函数指针.
+  
   - `CellServer::OnRun`是一个类的成员函数.
+  
+  - 要注意,如果要让线程执行某个类中的成员函数,那么第一个参数必须传递this指针, 然后才是第一个参数列表中的内容.
+  
+  - ```c++
+    class a{
+      void On( int a ){ return;} // 一个成员函数, 一个参数
+    };
+    
+    std::thread t(std::mem_fn(&a::On), this, 10);   //类中有个隐藏参数,就是 this, 这里必须给出
+    t.detach();
+    ```
+  
+  - 
 - **C++中的休眠函数**`<chrorn>`
   - ` std::chrono::milliseconds t(1); // 声明一个休眠的时间, 毫秒单位`
   - `std::this_thread::sleep_for(t);  // 启动一个休眠, c++ 提供的, 休眠一毫秒`
 - **编译命令**([完整解释](链接.md))
-  - `g++ main.cpp -I../include -o c.out -pthread`
+  - `g++ main.cpp -I../include -o c.out -pthread -std=C++14`
     - `-I 是头文件 , -pthread 是加载线程`
     - `-i (小写的L)链接`某个静态库
     - `-shared  -fpic  生成位置无关的动态库.so文件`
