@@ -960,6 +960,10 @@ int ptherad_detach(pthread_t pthread);
 - **使用`std::thread t(函数指针);` 来创建线程,但不调用 `.detach() 和 join()` 的任何一个,那么线程会直接启动, 但是父进程结束前会收到一个信号 `SIGABRT` . 这个是没有调用`.detach() 和 join()` 引发的.**
   - **如果使用 `std::thread t(函数指针);` 创建线程,并且调用了  `.detach() 或 join()` .那么线程会在`.detach() 或 join()` 调用处启动, 不会在创建函数之后就直接运行子线程.**
 
+### 判断线程是否已启动
+
+
+
 ```c++
 #include <iostream>
 #include <thread>
