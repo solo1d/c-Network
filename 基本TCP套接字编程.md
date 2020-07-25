@@ -59,8 +59,6 @@ famil和type参数组合规则:
 范例:  int lfd = socket(AF_INET, SOCK_STREAM, 0);
 ```
 
-![基本TCP客户/服务器程序套接字函数](assets/基本TCP客户:服务器程序套接字函数.png)
-
 ## connect函数
 
 **TCP客户用`connect` 函数来建立与 TCP 服务器的连接.**
