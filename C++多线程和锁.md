@@ -6,9 +6,9 @@
   - [多线程容易造成数据混乱](#多线程容易造成数据混乱)
 - [线程同步思想](#线程同步思想)
   - [线程同步实现](#线程同步实现)
-  - [线程同步范例:生产者与消费者模型](#线程同步范例:生产者与消费者模型)
+  - [线程同步范例-生产者与消费者模型](#线程同步范例-生产者与消费者模型)
 - [信号量线程同步](#信号量线程同步)
-  - [信号量线程同步范例:生产者消费者模型](#信号量线程同步范例:生产者消费者模型)
+  - [信号量线程同步范例-生产者消费者模型](#信号量线程同步范例-生产者消费者模型)
 - [互斥量-互斥锁](#互斥量-互斥锁)
   - [互斥锁的相关函数](#互斥锁的相关函数)
   - [原子操作和死锁](#原子操作和死锁)
@@ -24,17 +24,13 @@
   - [C-回收子线程资源阻塞等待线程退出,获取线程退出状态  pthread_join](#C-回收子线程资源阻塞等待线程退出,获取线程退出状态pthread_join)
   - [C-设置线程分离 ptherad_detach](#C-设置线程分离ptherad_detach)
   - [C-线程属性](#C-线程属性)
-- [在C++中的多线程](#在C++的多线程)
+- [在Cpp中的多线程](#在Cpp中的多线程)
   - [C++中的创建线程和头文件](#C++中的创建线程和头文件)
   - [C++中的互斥锁](#C++中的互斥锁)
   - [C++中的原子操作-原子锁](#C++中的原子操作-原子锁)
   - [C++中的自解锁](#C++中的自解锁)
-
-
-
-
-
-
+  - [C++信号量锁](#C++信号量锁)
+  - 
 
 
 
@@ -216,7 +212,7 @@ int pthread_cond_broadcast( pthread_cond_t* cond);
 
 
 
-### 线程同步范例:生产者与消费者模型
+### 线程同步范例-生产者与消费者模型
 
 ```c
 #include <stdio.h>
@@ -347,7 +343,7 @@ int main(int argc, char* argv[]){
 
 
 
-### 信号量线程同步范例:生产者消费者模型
+### 信号量线程同步范例-生产者消费者模型
 
 ```c
 #include <stdio.h>
@@ -936,7 +932,7 @@ int ptherad_detach(pthread_t pthread);
 
 
 
-## 在C++的多线程
+## 在Cpp中的多线程
 
 > **线程头文件 `<thread>`**
 
@@ -958,11 +954,10 @@ int ptherad_detach(pthread_t pthread);
     - **`t.join();` 会启动一个或多个线程,并等待该线程执行结束之后,继续执行主线程**
       - **多个线程指的是数组, 里面都是线程对象, 当数组中的某个对象调用 `.join()` 时, 数组内的所有对象全部都会启动, 也就是某个时间点一起并行执行.**
 - **使用`std::thread t(函数指针);` 来创建线程,但不调用 `.detach() 和 join()` 的任何一个,那么线程会直接启动, 但是父进程结束前会收到一个信号 `SIGABRT` . 这个是没有调用`.detach() 和 join()` 引发的.**
-  - **如果使用 `std::thread t(函数指针);` 创建线程,并且调用了  `.detach() 或 join()` .那么线程会在`.detach() 或 join()` 调用处启动, 不会在创建函数之后就直接运行子线程.**
-
-### 判断线程是否已启动
-
-
+  - **如果使用 `std::thread t(函数指针);` 创建线程,并且调用了  `.detach() 或 join()` .那么线程会在`.detach() 或 join()` 调用处启动, 不会在创建函数之后就直接运行子线程.**.
+- **可以让线程去执行某个类内的函数**
+    - `std::thread t(std::mem_fn(&PP::OnRun), this);`
+        - **`std::mem_fn(类内成员函数地址, 参数);` 可以将类成员函数 转换成普通函数来交给线程去执行**
 
 ```c++
 #include <iostream>
@@ -1005,6 +1000,21 @@ main(void){
   t4[3]->detach();   //虽然这里调用了, 但是什么都不会发生. 如果不这么做, 会无法删除没有调用.detach()
                      // 的对象, 哪怕对象存在于栈空间也一样, 否则 主线程绝对报错. 
 }
+
+
+
+//让线程去执行某个类内的函数.
+class PP{
+    void OnRun(){  }
+    
+    void Start() {
+    // 启动一个线程,去执行工作函数
+    // 将类成员函数转化成普通函数指针, 以供线程使用, 这样可以避免非常多的问题. 也是规范写法
+    std::thread t(std::mem_fn(&PP::OnRun), this);  //后面的这个this 是非常重要的, 类成员函数的隐藏参数
+    t.detach();   //线程分离
+}
+}
+
 ```
 
 
@@ -1066,110 +1076,120 @@ int main(int argc, const char * argv[]) {
 
 
 
+
+
 ## C++中的自解锁
 
-> `<mutex>`
+> 头文件 `<mutex>`
 
-- **自解锁需要配合互斥锁使用.也就是说, 需要一个全局或线程全局的一个互斥锁对象.**
-- **自解锁就是创建一个对象, 在这个对象的生命周期内,所有的操作都是单线程执行,也就是上锁.**
-  - **生命周期结束后,会自动解锁, 这个锁可以避免因为异常导致的死锁问题.**
-- `std::lock_guard<std::mutex> lock(_mutex);  //自解锁`
+- **自解锁和自上锁`(可以解决异常)`**:
+    - **`std::lock_guard<std::mutex> lg(m);`, 找个对象就是一个对 mutex的封装. 构造是 `m.lock();` ,析构是 `m.unlock();`**
+        - m是 `std::mutex m;`
+    - ==该类型存在于作用域之中,让他自动析构来达到解锁的目的,可以避免一些异常而导致无法解锁的发生==
+- **`std::unique_lock<std::mutex> ug(m);`  这个也是自解锁, 只不过功能更多而已**
+    - 可以进行尝试加锁, 循环尝试加锁, 手动解锁等.
+    - 还可以提供给信号量锁 去使用
 
 ```c++
+#include <mutex>
+std::mutex  lock;
+std::lock_guard <std::mutex> lg(lock);   // 必须用一个 互斥锁
+
+
+std::unique_lock<std::mutex> ug(lock);  
+ug.lock();   // 加锁
+ug.try_lock() ;  //尝试加锁
+ug.unlock();   //解锁
+ug.owns_lock();   // 当前线程是否拥有锁
+ug.release();    //释放锁
+```
+
+
+
+
+
+
+
+## C++信号量锁
+
+> 头文件 `<condition_variable>` , 翻译过来就是 支持阻塞等待的条件变量
+
+- 陷入阻塞, 等待唤醒
+- 但要注意虚假唤醒, 会造成死锁
+    - 就是当前没有阻塞线程, 却调用了一次唤醒函数, 随后线程进入了阻塞, 但无法得到唤醒了.
+
+```c++
+#include <condition_variable>
+#include <mutex>
+//使用之前,需要 互斥锁和自解锁 
+std::mutex _mutex;     //互斥锁
+std::unique_lock<std::mutex> ug(_mutex);   //自解锁, (互斥锁), 这个应该写在局部作用域内, 随时释放.
+
+std::condition_variable  _cv;   //定义信号量锁
+_cv.wait(ug);    // 陷入阻塞, 等待其他线程调用唤醒函数 .notify_one() 或 .notify_all()
+_cv.wait(ug,[=]()->bool{      /* 陷入阻塞. 当lambda表达式满足某些要求时, 就进行唤醒,而不是继续等待 */
+    return true;              
+});
+
+_cv.notify_one();   //唤醒一个陷入阻塞的线程
+_cv.notify_all();   //唤醒全部陷入阻塞的线程
+
+```
+
+```c++
+/*  一个信号量锁的模版 */
+#ifndef __CELLSEMAPHORE_HPP__
+#define __CELLSEMAPHORE_HPP__
+//信号量 类型
 #include <iostream>
+#include <chrono>
 #include <thread>
 #include <mutex>
-#include <chrono>  //C++提供的计时器,微秒级
+#include <condition_variable>   //信号量 锁
 
-std::mutex _mutex;         // 互斥锁,给 自解锁使用, 需要所有需要上锁的线程可以访问,并且保证唯一性
-long  t = 0;
-long  e = 0;
-
-class TimeStamp{
+class CELLSemaphore
+{
 public:
-    TimeStamp(){
-        updateTime();  // 初始化和更新时间是相同的
-    }
-    ~TimeStamp(){}
-    
-    /* 更新当前时间点 */
-    void updateTime(){
-        _begin = std::chrono::high_resolution_clock::now();  //得到当前时间,相当于初始化.
-    }
-    
-    //获得当前时间差的 秒
-    double getElapsedSecond(void){
-        // 将返回的微秒  扩展到 秒
-        return  getElapsedTimeInMicroSec() * 0.000001;
-    }
-    
-    //获得当前时间差的 毫秒
-    double getElapsedTimeInMilliSec(void){
-        // 将返回的微秒  扩展到 毫秒
-        return this->getElapsedTimeInMicroSec() * 0.001;
-    }
-    
-    
-    /* 获得已经过去的时间, 微秒级 */
-    double getElapsedTimeInMicroSec(void){
-        return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - _begin).count();
-    }
-    
+	CELLSemaphore():_wait(false), _wakeup(0){}
+	~CELLSemaphore() {}
+
+	//进入阻塞
+	void wait() {
+		std::unique_lock<std::mutex> ug(_mutex);
+		_wait--;
+		if ( 0 > _wait) {
+			_cv.wait(ug, [this]()->bool {
+				return this->_wakeup > 0;
+				});
+			_wakeup --;
+		}
+	}
+
+	//解除阻塞
+	void wakeup() {
+		std::lock_guard<std::mutex> lg(_mutex);
+		_wait++;
+		if ( 0 >= _wait) {
+			++_wakeup; 
+			_cv.notify_one();
+		}
+	}
 private:
-    std::chrono::time_point<std::chrono::high_resolution_clock> _begin;  //时间点<高分辨率时钟>
+	std::mutex _mutex;
+	std::condition_variable  _cv;
+	int _wait;    //等待计数
+	int _wakeup;  //唤醒计数
 };
-
-
-;
-// 声明一个休眠的时间, 毫秒单位
-std::chrono::milliseconds t_milli(1);
-
-void test(void){
-    while(1){
-        {
-            std::lock_guard<std::mutex> lock(_mutex);    //自解锁
-            //std::cout << "自解锁" << std::endl;
-            
-            // 启动一个休眠, c++ 提供的, 休眠 毫秒
-       //     std::this_thread::sleep_for(t_milli);
-            
-            e++;   // 这个值就没问题,有序增加
-        }
-        // 这里自解锁的生命周期结束了, 也就是解锁了. t 会无须并错乱的增加
-        t++;
-    }
-}
-
-int main(void){
-    int  threadNum = 4;
-    for( ;0  < threadNum ; threadNum--){
-        std::thread p(test);  //创建4个线程
-        p.detach();    //线程分离
-        
-    }
-    
-    double  nowTime;
-    // 声明一个休眠的时间, 毫秒单位
-    std::chrono::milliseconds tMain(10);
-    
-    
-    TimeStamp timeMain;
-    timeMain.updateTime();
-    
-    
-    while(1){
-        // 启动一个休眠, c++ 提供的, 休眠 毫秒
-        std::this_thread::sleep_for(tMain);
-        nowTime = timeMain.getElapsedSecond();
-        if ( 1.0 <= nowTime){
-            std::cout << "t = " << t << ". e = " << e << std::endl;
-            timeMain.updateTime();
-        }
-        
-    }   
-    return 0;
-}
+#endif
 ```
+
+
+
+
+
+
+
+
 
 
 
