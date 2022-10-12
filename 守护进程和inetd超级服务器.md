@@ -46,7 +46,7 @@
 
   - ***3).`cron` 守护进程按照规则定期执行一些程序, 而由它启动执行的程序同样作为守护进程运行.***
 
-    - **循环执行的例行性工作调度 `( 命令 crontab -e )`,说明:[cron 命令和工作方式](https://github.com/solo1d/Linux/blob/master/例行性工作调度%20(crontab).md)**
+    - **循环执行的例行性工作调度 `( 命令 crontab -e )`,说明:[cron 命令和工作方式](https://github.com/solo1d/Linux/blob/master/例行性工作调度 (crontab).md)**
     - **`cron` 自身由 某个开机启动的脚本启动**
 
   - ***4).守护进程还可以从用户终端或在前台或在后台启动***
